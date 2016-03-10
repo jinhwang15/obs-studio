@@ -46,6 +46,7 @@ struct ff_decoder {
 	double predicted_pts;      // predicted pts of next frame
 	double current_pts;        // pts of the most recently dispatched frame
 	int64_t current_pts_time;  // clock time when current_pts was set
+	int64_t basetime_pts;	   // new added by Hwang
 	int64_t start_pts;
 
 	bool hwaccel_decoder;
@@ -79,6 +80,23 @@ double ff_decoder_get_best_effort_pts(struct ff_decoder *decoder,
 
 bool ff_decoder_set_frame_drop_state(struct ff_decoder *decoder,
 		int64_t start_time, int64_t pts);
+
+
+//------ Updated by Hwang J. -----------------
+typedef struct
+{
+	unsigned char second; // 0-59
+	unsigned char minute; // 0-59
+	unsigned char hour;   // 0-23
+}_time_t;
+
+int64_t _time_to_epoch(_time_t* _time);
+_time_t _epoch_to_time(int64_t seconds);
+
+int64_t getCurrentTimestamp();
+int64_t getOffsetTimestamp(char * basetime);
+//----------------------------------------------
+
 
 #ifdef __cplusplus
 }
