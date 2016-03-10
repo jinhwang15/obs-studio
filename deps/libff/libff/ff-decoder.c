@@ -19,6 +19,8 @@
 #include <libavutil/time.h>
 #include <assert.h>
 
+extern char *gBaseTime; //------------- Updated by Hwang J.
+
 typedef void *(*ff_decoder_thread_t)(void *opaque_decoder);
 
 extern void *ff_audio_decoder_thread(void *opaque_audio_decoder);
@@ -49,8 +51,13 @@ struct ff_decoder *ff_decoder_init(AVCodecContext *codec_context,
 
 	decoder->timer_next_wake = (double)av_gettime() / 1000000.0;
 	decoder->previous_pts_diff = 40e-3;
-	decoder->current_pts_time = av_gettime();
-	decoder->start_pts = 0;
+//	decoder->current_pts_time = av_gettime();
+//	decoder->start_pts = 0;
+	//===============================
+	decoder->current_pts_time = getCurrentTimestamp(); //av_gettime();
+	decoder->basetime_pts = getOffsetTimestamp(gBaseTime);
+	decoder->start_pts = decoder->current_pts_time - decoder->basetime_pts;// 0;
+	//==============================
 	decoder->predicted_pts = 0;
 	decoder->first_frame = true;
 
@@ -328,7 +335,13 @@ double ff_decoder_get_best_effort_pts(struct ff_decoder *decoder,
 				av_log(NULL, AV_LOG_WARNING, "multiple pts < "
 						"start_pts; setting start pts "
 						"to 0");
-				decoder->start_pts = 0;
+				//===============================
+				decoder->current_pts_time = getCurrentTimestamp(); //av_gettime();
+				decoder->basetime_pts = getOffsetTimestamp(gBaseTime);
+				decoder->start_pts = decoder->current_pts_time - decoder->basetime_pts;// 0;
+				//==============================
+
+				//decoder->start_pts = 0;
 			}
 		}
 
@@ -381,3 +394,69 @@ bool ff_decoder_set_frame_drop_state(struct ff_decoder *decoder,
 
 	return false;
 }
+
+//------------- Updated by Hwang J.
+
+int64_t _time_to_epoch(_time_t* _time)
+{
+	unsigned int second = _time->second;  // 0-59
+	unsigned int minute = _time->minute;  // 0-59
+	unsigned int hour = _time->hour;    // 0-23
+
+	return ((hour * 60 + minute) * 60 + second); // *1000000;
+}
+_time_t _epoch_to_time(int64_t seconds)
+{
+	_time_t tm;
+
+//	seconds = seconds / 1000000;
+
+	int days = seconds / (60 * 60 * 24);
+
+	tm.hour = seconds / 3600;
+	int remainder = seconds % 3600;
+	tm.minute = remainder / 60;
+	tm.second = remainder % 60;
+
+	return tm;
+}
+
+//Get current time & convert to int
+int64_t getCurrentTimestamp() {
+
+	char *array = (char*)malloc(sizeof(char) * 64);
+	time_t rawtime;
+	time(&rawtime);
+	struct tm  *timeinfo = localtime(&rawtime);
+	strftime(array, sizeof(array) - 1, "%d.%m.%y_%H:%M:%S", timeinfo);
+
+	_time_t dt;
+	dt.hour = timeinfo->tm_hour;
+	dt.minute = timeinfo->tm_min;
+	dt.second = timeinfo->tm_sec;
+
+	int64_t value = _time_to_epoch(&dt);
+
+	return value;
+}
+
+int64_t getOffsetTimestamp(char * basetime) {
+
+	//	printf(gBaseTime);
+	//BaseTime shall be given as a cli argument 
+	// cli format(hh:mm) - "20:00"
+	//	char cli[20] = "08:00";
+	int hh, mm;
+	sscanf(basetime, "%d:%d", &hh, &mm);
+
+	_time_t offset;
+	offset.hour = hh;
+	offset.minute = mm;
+	offset.second = 0;
+
+	int64_t value = _time_to_epoch(&offset);
+
+	return value;
+}
+
+//------------------------------------
