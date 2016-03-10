@@ -58,6 +58,8 @@ static string lastLogFile;
 
 static bool portable_mode = false;
 
+static char *gBaseTime;
+
 QObject *CreateShortcutFilter()
 {
 	return new OBSEventFilter([](QObject *obj, QEvent *event)
@@ -1460,9 +1462,12 @@ int main(int argc, char *argv[])
 	move_to_xdg();
 #endif
 
+	gBaseTime = NULL;
 	for (int i = 1; i < argc; i++) {
 		if (arg_is(argv[i], "--portable", "-p")) {
 			portable_mode = true;
+		}else if (arg_is(argv[i], "--cli", "-c")) {
+			gBaseTime = argv[i++];
 		}
 	}
 
